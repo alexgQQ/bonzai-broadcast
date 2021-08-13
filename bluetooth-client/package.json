@@ -1,0 +1,53 @@
+{
+  "name": "bonzai-broadcast-client",
+  "version": "0.1.0",
+  "description": "This is a bluetooth client for a bonzai tree monitoring project",
+  "main": "./dist/main.prod.js",
+  "scripts": {
+    "clear": "rm -rf ./dist",
+    "dev": "npm run start-renderer",
+    "prod": "run-electron .",
+    "build": "npm run clear && npm-run-all --parallel build-main build-renderer",
+    "build-main": "webpack --config webpack/main.config.js",
+    "build-renderer": "webpack --config webpack/renderer.prod.config.js",
+    "start-main": "cross-env NODE_ENV=development run-electron -r @babel/register src/main/index.js",
+    "start-renderer": "cross-env NODE_ENV=development webpack-dev-server --config webpack/renderer.dev.config.js"
+  },
+  "author": "alexgQQ",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.4.0",
+    "@babel/plugin-proposal-class-properties": "^7.4.0",
+    "@babel/preset-env": "^7.4.2",
+    "@babel/preset-react": "^7.0.0",
+    "@babel/register": "^7.4.0",
+    "babel-loader": "^8.0.5",
+    "cross-env": "^5.2.0",
+    "css-loader": "^2.1.1",
+    "electron": "^4.1.1",
+    "file-loader": "^3.0.1",
+    "html-webpack-plugin": "^3.2.0",
+    "less": "^3.9.0",
+    "less-loader": "^4.1.0",
+    "node-sass": "^4.11.0",
+    "npm-run-all": "^4.1.5",
+    "run-electron": "^0.1.0",
+    "sass-loader": "^7.1.0",
+    "style-loader": "^0.23.1",
+    "url-loader": "^1.1.2",
+    "webpack": "^4.29.6",
+    "webpack-cli": "^3.3.0",
+    "webpack-dev-server": "^3.2.1",
+    "webpack-merge": "^4.2.1"
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.11.0",
+    "@material-ui/icons": "^4.9.1",
+    "electron-download-manager": "^2.1.2",
+    "material-ui": "^0.20.2",
+    "react": "^16.8.5",
+    "react-dom": "^16.8.5",
+    "recharts": "^1.8.5",
+    "rxjs": "^6.6.2"
+  }
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Bonsai Plant Sensor Application
+After=multi-user.target
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bonsaiSensor
+StandardInput=tty-force
+
+[Install]
+WantedBy=multi-user.target

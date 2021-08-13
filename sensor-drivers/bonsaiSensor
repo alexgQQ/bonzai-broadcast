@@ -1,0 +1,168 @@
+#!/usr/bin/python3 -u
+
+import os
+import time
+import csv
+import logging
+
+from adafruit_mcp3xxx.mcp3008 import MCP3008, P0
+from digitalio import DigitalInOut
+from adafruit_mcp3xxx.analog_in import AnalogIn
+from adafruit_dht import DHT11
+from adafruit_seesaw.seesaw import Seesaw
+from busio import I2C, SPI
+from board import (
+    SCL,    # GPIO-3/PIN-5
+    SDA,    # GPIO-2/PIN-3
+    SCK,    # GPIO-11/PIN-23
+    MISO,   # GPIO-9/PIN-21
+    MOSI,   # GPIO-10/PIN-19
+    D22,    # GPIO-22/PIN-15
+    D27,    # GPIO-27/PIN-13
+)
+
+logging.basicConfig(level=logging.INFO)
+
+# Used to test the code if sensors were not setup
+# Uncomment and set all `init` functions to return this.
+import random
+class Spec:
+
+    @property
+    def value(self):
+        return random.randint(0, 100)
+
+    @property
+    def humidity(self):
+        return random.randint(0, 100)
+
+    @property
+    def temperature(self):
+        return random.randint(0, 100)
+
+    @property
+    def voltage(self):
+        return random.randint(0, 100)
+
+    def get_temp(self):
+        return random.randint(0, 100)
+
+    def moisture_read(self):
+        return random.randint(0, 100)
+
+
+STEMMA_I2C_ADDR = 0x36
+
+# Location and headers of the csv file output
+data_file = '/home/pi/data/data.csv'
+fieldnames = (
+    'timestamp',
+    'soil_temperature',
+    'soil_moisture',
+    'uv_raw_adc_value',
+    'uv_voltage',
+    'uv_index',
+    'ambient_temperature',
+    'ambient_humidity',
+    )
+cache = dict.fromkeys(fieldnames, None)
+
+
+def init_stemma_sensor():
+    """ Creates a I2C instance and construct the Stemma sensor interface """
+    i2c_bus = I2C(scl=SCL, sda=SDA)
+    return Seesaw(i2c_bus, addr=STEMMA_I2C_ADDR)
+    # return Spec()
+
+def init_mcp3008_read():
+    """ Creates a SPI instance and analog reader for the MCP3008 ADC """
+    spi_bus = SPI(clock=SCK, MISO=MISO, MOSI=MOSI)
+    cs = DigitalInOut(D22)
+    mcp = MCP3008(spi_bus, cs)
+    return AnalogIn(mcp, P0)
+    # return Spec()
+
+def init_dht_sensor():
+    """ Create a digital bus for the DHT11 sensor """
+    return DHT11(D27)
+    # return Spec()
+
+
+class DataLogger:
+    """ Object to gather sensor data and output to a csv file """
+
+    def __init__(self):
+        self.running = True
+
+        self.stemma = init_stemma_sensor()
+        self.guva = init_mcp3008_read()
+        self.dht11 = init_dht_sensor()
+
+        self.poll_delay = 60
+
+        # Create headers for the csv file for the first time
+        if not os.path.isfile(data_file):
+            with open(data_file, 'w') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+
+    def __getattribute__(self, name):
+        """ Cache values that will be pushed to the csv file in case of sensor error """
+        if name in fieldnames:
+            try:
+                value = super().__getattribute__(name)
+                cache[name] = value
+            except Exception as err:
+                logging.info(f'Exception reading {name} - {err}')
+                value = cache[name]
+            return value
+        else:
+            return super().__getattribute__(name)
+
+    @property
+    def timestamp(self):
+        return time.time()
+
+    @property
+    def soil_temperature(self):
+        return self.stemma.get_temp()
+
+    @property
+    def soil_moisture(self):
+        return self.stemma.moisture_read()
+
+    @property
+    def uv_raw_adc_value(self):
+        return self.guva.value
+
+    @property
+    def uv_voltage(self):
+        return self.guva.voltage
+
+    @property
+    def uv_index(self):
+        return self.guva.voltage / 0.1
+
+    @property
+    def ambient_temperature(self):
+        return self.dht11.temperature
+
+    @property
+    def ambient_humidity(self):
+        return self.dht11.humidity
+
+    def log(self):
+        entry = {prop: getattr(self, prop) for prop in fieldnames}
+        with open(data_file, 'a') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writerow(entry)
+
+    def run(self):
+        while self.running:
+            self.log()
+            time.sleep(self.poll_delay)
+
+
+if __name__ == '__main__':
+    logger = DataLogger()
+    logger.run()
